@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'api_service.dart';
 
 class LeftoversHome extends StatefulWidget {
   @override
@@ -6,24 +8,19 @@ class LeftoversHome extends StatefulWidget {
 }
 
 class _LeftoversHome extends State<LeftoversHome> {
+  final TextEditingController ingredienteController = TextEditingController();
+  final List<String> ingredientesSelecionados = [];
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: Color(0xFFFDF6E4),
+        backgroundColor: const Color(0xFFFDF6E4),
         appBar: AppBar(
           backgroundColor: Colors.teal[900],
-          bottom: TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70, 
-            tabs: [
-              Tab(text: 'HISTÓRICO DE RECEITAS'),
-              Tab(text: 'ME SURPREENDA'),
-            ],
-          ),
-          title: Text(
-            'Melhores receitas',
+          title: const Text(
+            'Leftovers',
             style: TextStyle(color: Colors.white),
           ),
         ),
@@ -31,32 +28,92 @@ class _LeftoversHome extends State<LeftoversHome> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              TextField(
-                decoration: InputDecoration(
-                  hintText: 'O que temos para hoje?',
-                  prefixIcon: Icon(Icons.search),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+              TypeAheadField<String>(
+                textFieldConfiguration: TextFieldConfiguration(
+                  controller: ingredienteController,
+                  decoration: InputDecoration(
+                    hintText: 'Digite um ingrediente',
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
+                suggestionsCallback: (pattern) async {
+                  if (pattern.isEmpty) return [];
+                  return await SpoonacularService.buscaIngredientes(pattern);
+                },
+                itemBuilder: (context, suggestion) {
+                  return ListTile(
+                    title: Text(suggestion),
+                  );
+                },
+                onSuggestionSelected: (suggestion) {
+                  if (!ingredientesSelecionados.contains(suggestion)) {
+                    setState(() {
+                      ingredientesSelecionados.add(suggestion);
+                    });
+                  }
+                  ingredienteController.clear();
+                },
+                noItemsFoundBuilder: (context) => const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Text('Nenhum ingrediente encontrado'),
+                ),
               ),
-              SizedBox(height: 20),
-              IngredientButton(
-                label: 'Banana',
-                imagePath: 'assets/images/banana.jpg',
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: ingredientesSelecionados.map((ingrediente) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.teal[700],
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 4,
+                          offset: Offset(2, 2),
+                        )
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.restaurant_menu,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          ingrediente,
+                          style: const TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              ingredientesSelecionados.remove(ingrediente);
+                            });
+                          },
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white70,
+                            size: 18,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
               ),
-              IngredientButton(
-                label: 'Biscoito',
-                imagePath: 'assets/images/biscoito.jpg',
-              ),
-              IngredientButton(
-                label: 'Doce de leite',
-                imagePath: 'assets/images/doce_de_leite.jpg',
-              ),
-              Spacer(),
+              const Spacer(),
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -67,10 +124,8 @@ class _LeftoversHome extends State<LeftoversHome> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  onPressed: () {
-                    print("Botao clicado");
-                  },
-                  child: Text(
+                  onPressed: _buscarReceitas,
+                  child: const Text(
                     'Gerar Receita',
                     style: TextStyle(fontSize: 18, color: Colors.white),
                   ),
@@ -82,39 +137,59 @@ class _LeftoversHome extends State<LeftoversHome> {
       ),
     );
   }
-}
 
-class IngredientButton extends StatelessWidget {
-  final String label;
-  final String imagePath;
+  void _buscarReceitas() async {
+    if (ingredientesSelecionados.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Adicione pelo menos um ingrediente')),
+      );
+      return;
+    }
 
-  const IngredientButton({
-    required this.label,
-    required this.imagePath,
-  });
+    try {
+      final receitas = await SpoonacularService.buscaReceitas(ingredientesSelecionados);
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.teal[800],
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: ListTile(
-          leading: Image.asset(
-            imagePath,
-            width: 40,
-            height: 40,
+      if (receitas.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nenhuma receita encontrada.')),
+        );
+        return;
+      }
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Receitas encontradas'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView(
+              shrinkWrap: true,
+              children: receitas.map((r) {
+                return ListTile(
+                  leading: Image.network(
+                    r['image'],
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                  ),
+                  title: Text(r['title']),
+                );
+              }).toList(),
+            ),
           ),
-          title: Text(
-            label,
-            style: TextStyle(color: Colors.white, fontSize: 18),
-          ),
-          onTap: () {},
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Fechar'),
+            )
+          ],
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      print('Erro: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erro ao buscar receitas')),
+      );
+    }
   }
 }
