@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class SpoonacularService {
-  static const String apiKey = 'd4777645d23d4667b5a8477926933166';
+  static const String apiKey = 'API_KEY';
   static const String baseUrl = 'https://api.spoonacular.com';
 
   
