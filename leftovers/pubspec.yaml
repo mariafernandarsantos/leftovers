@@ -23,3 +23,7 @@ flutter:
     - assets/images/banana.jpg
     - assets/images/biscoito.jpg
     - assets/images/doce_de_leite.jpg
+
+dependency_overrides:
+  flutter_keyboard_visibility:
+    path: ./flutter_keyboard_visibility
