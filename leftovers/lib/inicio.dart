@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'api_service.dart';
-import 'receita.dart'; // Importa a tela de receita
+import 'models/receita.dart';
+import 'resultados.dart';
 
 class LeftoversHome extends StatefulWidget {
   @override
@@ -18,10 +19,7 @@ class _LeftoversHome extends State<LeftoversHome> {
       backgroundColor: const Color(0xFFFDF6E4),
       appBar: AppBar(
         backgroundColor: Colors.teal[900],
-        title: const Text(
-          'Leftovers',
-          style: TextStyle(color: Colors.white),
-        ),
+        title: const Text('Leftovers', style: TextStyle(color: Colors.white)),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -46,9 +44,7 @@ class _LeftoversHome extends State<LeftoversHome> {
                 return await SpoonacularService.buscaIngredientes(pattern);
               },
               itemBuilder: (context, suggestion) {
-                return ListTile(
-                  title: Text(suggestion),
-                );
+                return ListTile(title: Text(suggestion));
               },
               onSuggestionSelected: (suggestion) {
                 if (!ingredientesSelecionados.contains(suggestion)) {
@@ -84,16 +80,9 @@ class _LeftoversHome extends State<LeftoversHome> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.restaurant_menu,
-                        color: Colors.white,
-                        size: 18,
-                      ),
+                      const Icon(Icons.restaurant_menu, color: Colors.white, size: 18),
                       const SizedBox(width: 6),
-                      Text(
-                        ingrediente,
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
-                      ),
+                      Text(ingrediente, style: const TextStyle(color: Colors.white, fontSize: 16)),
                       const SizedBox(width: 6),
                       GestureDetector(
                         onTap: () {
@@ -101,11 +90,7 @@ class _LeftoversHome extends State<LeftoversHome> {
                             ingredientesSelecionados.remove(ingrediente);
                           });
                         },
-                        child: const Icon(
-                          Icons.close,
-                          color: Colors.white70,
-                          size: 18,
-                        ),
+                        child: const Icon(Icons.close, color: Colors.white70, size: 18),
                       ),
                     ],
                   ),
@@ -119,27 +104,33 @@ class _LeftoversHome extends State<LeftoversHome> {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal[900],
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   if (ingredientesSelecionados.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Adicione pelo menos um ingrediente')),
                     );
                     return;
                   }
-                  // Ir para a tela de receita
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ReceitaPage()),
-                  );
+
+                  try {
+                    final data = await SpoonacularService.buscaReceitas(ingredientesSelecionados);
+                    final receitas = data.map<Receita>((item) => Receita.fromJson(item)).toList();
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ResultadosPage(receitas: receitas),
+                      ),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Erro: ${e.toString()}')),
+                    );
+                  }
                 },
-                child: const Text(
-                  'Gerar Receita',
-                  style: TextStyle(fontSize: 18, color: Colors.white),
-                ),
+                child: const Text('Gerar Receita', style: TextStyle(fontSize: 18, color: Colors.white)),
               ),
             ),
           ],
